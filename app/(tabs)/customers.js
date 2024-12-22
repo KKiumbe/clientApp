@@ -11,7 +11,6 @@ import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 
-
 const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
 const Customers = React.memo(() => {
@@ -38,14 +37,11 @@ const Customers = React.memo(() => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(customers);
   const [secondaryPhoneNumber, setSecondaryPhoneNumber] = useState('');
-  
 
   const navigation = useNavigation();
   const currentUser = useAuthStore(state => state.currentUser);
 
-  console.log(`this is the current user ${JSON.stringify(currentUser)}`);
 
- 
   useEffect(() => {
     if (!currentUser) {
       router.push('login');
@@ -55,48 +51,19 @@ const Customers = React.memo(() => {
   }, [currentUser]);
 
   const fetchCustomers = async () => {
-    // Check if the user has permission to read customer data
-   
-  
     try {
-      // Retrieve the user token
-      const token = currentUser?.token;
-  
-      // Fetch customer data from the API
-      const response = await axios.get(`${BASEURL}/customers`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-  
-      // Update the customer list with the fetched data
+      const response = await axios.get(`${BASEURL}/customers`);
       setCustomers(response.data);
     } catch (error) {
-      console.error("Error fetching customers:", error);
-  
-      // Handle errors gracefully
-      if (error.response?.status === 401) {
-        setSnackbarMessage("Unauthorized: Please log in again.");
-        router.push("login"); // Redirect to login on unauthorized access
-      } else if (error.response?.status === 403) {
-        setSnackbarMessage(
-          "Forbidden: You do not have permission to view customers."
-        );
-      } else {
-        setSnackbarMessage("Error fetching customers. Please try again.");
-      }
-  
+      console.error('Error fetching customers:', error);
+      setSnackbarMessage('Error fetching customers.');
       setSnackbarOpen(true);
     }
   };
-  
-  
-  
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchCustomers();
-    setRefreshing(false);
+    fetchCustomers().then(() => setRefreshing(false));
   };
 
   const handleSearch = async () => {

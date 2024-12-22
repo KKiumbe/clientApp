@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
 
-const BASEURL ="http://212.47.74.158:5000/api"
+const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
 const CreateInvoice = () => {
   const navigation = useNavigation();
@@ -58,13 +58,11 @@ const CreateInvoice = () => {
       ],
     };
 
-    const token = await AsyncStorage.getItem('user');
+  
     setLoading(true);
     try {
       const response = await axios.post(`${BASEURL}/invoices/`, invoiceData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        
       });
 
       setSnackbarMessage('Invoice created successfully!');

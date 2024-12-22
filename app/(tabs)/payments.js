@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+
 const PaymentScreen = () => {
     const [payments, setPayments] = useState([]);
     const [originalPayments, setOriginalPayments] = useState([]);
@@ -22,36 +23,23 @@ const PaymentScreen = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [loading, setLoading] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [hasPermission, setHasPermission] = useState(true);
+    const [isProcessing, setIsProcessing] = useState(false); // New state for submit process
     const router = useRouter();
-    const BASEURL = process.env.EXPO_PUBLIC_API_URL;
-
-    
-
-
-
-    useEffect(() => {
-        fetchPayments();
-    }, []);
+    const BASEURL =process.env.EXPO_PUBLIC_API_URL
 
     const fetchPayments = async () => {
         setLoading(true);
         try {
             const response = await fetch(`${BASEURL}/payments`);
             const data = await response.json();
-    
-            if (response.status === 403) {
-                setHasPermission(false); // Permission denied
-                setSnackbarMessage('Access denied. Please contact the admin.');
-                setSnackbarOpen(true);
-                return;
-            }
-    
+            console.log(JSON.stringify(data));
+
             if (Array.isArray(data)) {
                 setPayments(data);
                 setOriginalPayments(data);
             }
+
+            console.log(`payment object ${JSON.stringify(payments)}`);
         } catch (error) {
             console.error('Error fetching payments:', error);
             setSnackbarMessage('Error fetching payments.');
@@ -60,13 +48,14 @@ const PaymentScreen = () => {
             setLoading(false);
         }
     };
-    
+
+    useEffect(() => {
+        fetchPayments();
+    }, []);
 
     const handleRefresh = () => {
-        if (hasPermission) {
-            setRefreshing(true);
-            fetchPayments().then(() => setRefreshing(false));
-        }
+        setRefreshing(true);
+        fetchPayments().then(() => setRefreshing(false));
     };
 
     const handleSearch = async () => {
@@ -78,7 +67,7 @@ const PaymentScreen = () => {
         }
 
         try {
-            const isPhoneNumber = /^\\d+$/.test(searchQuery);
+            const isPhoneNumber = /^\d+$/.test(searchQuery);
             const response = await axios.get(`${BASEURL}/search-customers`, {
                 params: {
                     phone: isPhoneNumber ? searchQuery : undefined,
@@ -113,6 +102,12 @@ const PaymentScreen = () => {
         setSearchResults([]);
     };
 
+    const handleCustomerSelect = (customer) => {
+        setSelectedCustomer(customer);
+        setSearchResults([]);
+        setSearchQuery('');
+    };
+
     const handlePaymentSubmit = async () => {
         if (!selectedCustomer || !totalAmount || !modeOfPayment) {
             setSnackbarMessage('Please fill all payment details.');
@@ -127,7 +122,7 @@ const PaymentScreen = () => {
             paidBy: selectedCustomer.firstName,
         };
 
-        setIsProcessing(true);
+        setIsProcessing(true); // Set processing to true to disable the submit button and show spinner
         try {
             await axios.post(`${BASEURL}/manual-cash-payment`, payload);
             fetchPayments();
@@ -137,9 +132,24 @@ const PaymentScreen = () => {
             setSnackbarMessage('Error creating payment.');
             setSnackbarOpen(true);
         } finally {
-            setIsProcessing(false);
+            setIsProcessing(false); // Set processing back to false after transaction
         }
     };
+
+    const handleEditPress = (id) => {
+        router.push(`payment/${id}`);
+    };
+
+    const openDetailModal = (payment) => {
+        setSelectedPayment(payment);
+        setDetailModalVisible(true);
+    };
+
+    const closeDetailModal = () => {
+        setDetailModalVisible(false);
+        setSelectedPayment(null);
+    };
+
 
     const RenderPaymentItem = ({ item }) => (
         <DataTable.Row key={item.id}>
@@ -150,27 +160,29 @@ const PaymentScreen = () => {
             <DataTable.Cell>{item.receipted ? 'Receipted' : 'Not Receipted'}</DataTable.Cell>
             <DataTable.Cell>{item.receipt?.receiptNumber || 'N/A'}</DataTable.Cell>
             <DataTable.Cell>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    {!item.receipted && (
-                        <Pressable onPress={() => handleEditPress(item.id)} style={{ marginRight: 16 }}>
-                            <Icon name="pencil" size={24} color="blue" />
-                        </Pressable>
-                    )}
-                    <Pressable onPress={() => openDetailModal(item)}>
-                        <Icon name="eye" size={24} color="green" />
-                    </Pressable>
-                </View>
-            </DataTable.Cell>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {!item.receipted && (
+            <Pressable onPress={() => handleEditPress(item.id)} style={{ marginRight: 16 }}>
+                <Icon name="pencil" size={24} color="blue" />
+            </Pressable>
+        )}
+        
+    </View>
+</DataTable.Cell>
+
+
+<DataTable.Cell>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      
+        <Pressable onPress={() => openDetailModal(item)}>
+            <Icon name="eye" size={24} color="green" />
+        </Pressable>
+    </View>
+</DataTable.Cell>
+
+
         </DataTable.Row>
     );
-
-    if (!hasPermission) {
-        return (
-            <View style={styles.accessDeniedContainer}>
-                <Text style={styles.accessDeniedText}>Kindly ask the admin to give you rights.</Text>
-            </View>
-        );
-    }
 
     return (
         <View style={styles.container}>
@@ -200,18 +212,137 @@ const PaymentScreen = () => {
                         <DataTable.Title>Edit</DataTable.Title>
                     </DataTable.Header>
 
+
                     <FlatList
-                        data={searchQuery ? searchResults : payments}
-                        renderItem={({ item }) => <RenderPaymentItem item={item} />}
-                        keyExtractor={(item) => item.id.toString()}
-                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-                    />
+  data={searchQuery ? searchResults : payments} // Display searchResults if a search has been performed
+  renderItem={({ item }) => <RenderPaymentItem item={item} />}
+  keyExtractor={(item, index) => (item.id ? item.id : `payment-${index}`)} // Fallback to index if item.id is missing
+  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+/>
+
+
+
+
+
                 </DataTable>
             </View>
 
             <Pressable style={styles.fab} onPress={openModal}>
                 <Icon name="plus" size={24} color="white" />
             </Pressable>
+
+
+
+
+            
+
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={closeModal}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalView}>
+                        <Text style={styles.modalTitle}>Add Manual Payment</Text>
+
+                        <Searchbar
+                            placeholder="Name or phone number"
+                            onChangeText={setSearchQuery}
+                            onSubmitEditing={handleSearch}
+                            value={searchQuery}
+                            style={styles.searchbar}
+                        />
+
+                        <ScrollView style={styles.customerList}>
+                            {searchResults.map(customer => (
+                                <Pressable
+                                    key={customer.id}
+                                    style={[
+                                        styles.customerItem,
+                                        selectedCustomer && selectedCustomer.id === customer.id ? styles.selectedCustomer : null,
+                                    ]}
+                                    onPress={() => handleCustomerSelect(customer)}
+                                >
+                                    <Text>{`${customer.firstName} ${customer.lastName}`}</Text>
+                                </Pressable>
+                            ))}
+                        </ScrollView>
+
+                        {selectedCustomer && (
+                            <>
+                                <Text style={styles.customerInfo}>
+                                    First Name: {selectedCustomer.firstName}
+                                </Text>
+                                <Text style={styles.customerInfo}>
+                                    Last Name: {selectedCustomer.lastName}
+                                </Text>
+                                <Text style={styles.customerInfo}>
+                                    Phone Number: {selectedCustomer.phoneNumber}
+                                </Text>
+                                <Text style={styles.customerInfo}>
+                                    Closing Balance: KES {selectedCustomer.closingBalance}
+                                </Text>
+
+                                <TextInput
+                                    placeholder="Total Amount"
+                                    keyboardType="numeric"
+                                    value={totalAmount}
+                                    onChangeText={setTotalAmount}
+                                    style={styles.input}
+                                />
+
+                                <Picker
+                                    selectedValue={modeOfPayment}
+                                    style={styles.picker}
+                                    onValueChange={(itemValue) => setModeOfPayment(itemValue)}
+                                >
+                                    <Picker.Item label="Select Mode of Payment" value="" />
+                                    <Picker.Item label="MPESA" value="MPESA" />
+                                    <Picker.Item label="CASH" value="CASH" />
+                                    <Picker.Item label="BANK" value="BANK" />
+                                </Picker>
+                            </>
+                        )}
+
+                    <Pressable style={styles.submitButton} onPress={handlePaymentSubmit} disabled={isProcessing}>
+                            {isProcessing ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.submitButtonText}>Submit Payment</Text>}
+                        </Pressable>
+
+                        <Pressable style={styles.closeButton} onPress={closeModal}>
+                            <Text style={styles.closeButtonText}>Close</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={detailModalVisible}
+                onRequestClose={closeDetailModal}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalView}>
+                        {selectedPayment && (
+                            <>
+                                <Text style={styles.modalTitle}>Payment Details</Text>
+                                <Text>Name:{selectedPayment.firstName}</Text>
+                                <Text>Amount: KES {selectedPayment.amount}</Text>
+                                <Text>Transaction ID: {selectedPayment.TransactionId}</Text>
+                                <Text>Mode of Payment: {selectedPayment.modeOfPayment}</Text>
+                                <Text>Status: {selectedPayment.receipted ? 'Receipted' : 'Not Receipted'}</Text>
+                                <Text>Receipt Number: {selectedPayment.receipt?.receiptNumber || 'N/A'}</Text>
+                                <Text>Payment Reference: {selectedPayment?.Ref || 'N/A'}</Text>
+                            </>
+                        )}
+
+                        <Pressable style={styles.closeButton} onPress={closeDetailModal}>
+                            <Text style={styles.closeButtonText}>Close</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
 
             <Snackbar
                 visible={snackbarOpen}
@@ -246,16 +377,71 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         padding: 16,
     },
-    accessDeniedContainer: {
+    modalContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
     },
-    accessDeniedText: {
+    modalView: {
+        width: '80%',
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalTitle: {
         fontSize: 18,
-        color: 'red',
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    customerList: {
+        maxHeight: 100,
+        marginBottom: 10,
+    },
+    customerItem: {
+        padding: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ddd',
+    },
+    selectedCustomer: {
+        backgroundColor: '#e6e6e6',
+    },
+    customerInfo: {
+        marginBottom: 5,
+    },
+    input: {
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+        padding: 10,
+    },
+    picker: {
+        marginBottom: 10,
+    },
+    submitButton: {
+        backgroundColor: 'green',
+        padding: 10,
+        borderRadius: 5,
+        marginBottom: 10,
+    },
+    submitButtonText: {
+        color: 'white',
         textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    closeButton: {
+        backgroundColor: 'red',
+        padding: 10,
+        borderRadius: 5,
+    },
+    closeButtonText: {
+        color: 'white',
+        textAlign: 'center',
+        fontWeight: 'bold',
     },
 });
 

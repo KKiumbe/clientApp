@@ -8,7 +8,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
 
-const BASEURL = "http://212.47.74.158:5000/api";
+const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
 const InvoiceDetails = () => {
   const route = useRoute();
@@ -24,15 +24,11 @@ const InvoiceDetails = () => {
   const fetchInvoiceDetails = async () => {
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('user');
-      if (!token) {
-        throw new Error('No token found');
-      }
+     
+    
 
       const response = await axios.get(`${BASEURL}/invoices/${id}/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+     
       });
       setInvoice(response.data);
       console.log(response.data);
@@ -57,14 +53,12 @@ const InvoiceDetails = () => {
   }, [invoice]);
 
   const handleDownloadInvoice = async () => {
-    const token = await AsyncStorage.getItem('user');
+   
     try {
       const downloadPath = FileSystem.documentDirectory + `invoice-${id}.pdf`;
   
       const response = await axios.get(`${BASEURL}/download-invoice/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      
         responseType: 'blob',
       });
   
@@ -93,11 +87,11 @@ const InvoiceDetails = () => {
   };
 
   const handleCancelInvoice = async () => {
-    const token = await AsyncStorage.getItem('user');
+   
     try {
-      const response = await axios.put(`${BASEURL}/invoices/cancel/${id}/`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.put(`${BASEURL}/invoices/cancel/${id}/`,  
+       
+      );
       setSnackbarMessage(response.data.message);
       setSnackbarOpen(true);
       fetchInvoiceDetails();

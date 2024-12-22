@@ -24,28 +24,41 @@ const LoginScreen = () => {
     setErrorMessage('');
     setLoading(true);
 
+    // Basic validation
+    if (!formData.phoneNumber || !formData.password) {
+      setErrorMessage('Phone number and password are required.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${BASEURL}/signin`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json', // Specify the request content type
         },
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
         const { message } = await response.json();
-        throw new Error(message);
+        throw new Error(message || 'Login failed. Please try again.');
       }
 
       const data = await response.json();
       console.log('User logged in successfully:', data);
-      await AsyncStorage.setItem('token', data.token);
+
+      // Store the token in AsyncStorage
+      //await AsyncStorage.setItem('token', data.token);
+
+      // Update the current user in the auth store
       useAuthStore.getState().updateCurrentUser(data.user);
 
-      router.push('/'); // Navigate to the main page
+      // Navigate to the main page
+      router.push('/');
       setFormData({ phoneNumber: '', password: '' }); // Reset form after successful login
     } catch (error) {
+      console.error('Error logging in:', error.message);
       setErrorMessage(error.message);
     } finally {
       setLoading(false);
@@ -54,7 +67,7 @@ const LoginScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Appbar.Header style={styles.title}>
+      <Appbar.Header>
         <Appbar.Content title="Login to Your Account" />
       </Appbar.Header>
 
@@ -109,7 +122,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 4,
   },
-  title: {},
   button: {
     marginTop: 16,
     backgroundColor: '#6200ee',

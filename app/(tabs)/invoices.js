@@ -28,16 +28,13 @@ const InvoiceScreen = () => {
   const currentUser = useAuthStore((state) => state.currentUser);
   const { colors } = useTheme();
 
-  useEffect(() => {
-    const checkToken = async () => {
-      const token = await AsyncStorage.getItem('user');
-      if (!token) {
-        router.push('login');
-      }
-    };
 
-    checkToken();
-  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      router.push('login'); // Redirect to login page if the user is not logged in
+    }
+  }, [currentUser]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -47,21 +44,18 @@ const InvoiceScreen = () => {
   const fetchInvoices = async (reset = false) => {
     if (reset) {
       setOffset(0);
-      setInvoices([]); // Ensure invoices is always an array
+      setInvoices([]);
     }
-  
+
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('user');
-      if (!token) {
-        router.push('login');
-        return;
-      }
-  
+      
+      
+
       const response = await axios.get(`${BASEURL}/invoices/all`, {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+        
         },
         params: {
           status: statusFilter,
@@ -69,26 +63,23 @@ const InvoiceScreen = () => {
           limit: limit,
         },
       });
-  
-      // Handle both array and object responses
-      if (Array.isArray(response.data)) {
-        setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);
-        setOffset((prevOffset) => prevOffset + limit);
-      } else if (response.data.message === "No invoices found.") {
-        setInvoices([]); // No data available
-      } else {
-        console.error('Unexpected API response:', response.data);
-        setInvoices([]); // Fallback to empty array for safety
-      }
+
+      setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);
+      setOffset((prevOffset) => prevOffset + limit);
     } catch (error) {
       console.error('Error fetching invoices:', error);
-      setSnackbarMessage('Failed to fetch invoices. Please try again.');
-      setSnackbarOpen(true);
+      if (error.response && error.response.status === 401) {
+        setSnackbarMessage('You are not authorized. Please log in.');
+        setSnackbarOpen(true);
+        router.push('login');
+      } else {
+        setSnackbarMessage('Failed to fetch invoices. Please try again.');
+        setSnackbarOpen(true);
+      }
     } finally {
       setLoading(false);
     }
   };
-  
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -258,29 +249,19 @@ const InvoiceScreen = () => {
         <FlatList
   data={invoices.filter(invoice => !statusFilter || invoice.status === statusFilter)}
   renderItem={renderItem}
-  keyExtractor={(item) => item.id?.toString() || item.invoiceNumber || 'unknown'}
+  keyExtractor={(item, index) =>
+    item.id ? item.id : item.invoiceNumber ? `${item.invoiceNumber}-${index}` : `${index}`
+  }
   refreshControl={
     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
   }
   ListHeaderComponent={
-    invoices.length > 0 && (
-      <View style={styles.row}>
-        <Text style={styles.cell}>Invoice No</Text>
-        <Text style={styles.cell}>Customer Name</Text>
-        <Text style={styles.cell}>Amount</Text>
-        <Text style={styles.cell}>Status</Text>
-      </View>
-    )
-  }
-  ListEmptyComponent={
-    !loading && (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No invoices found.</Text>
-        <Button mode="contained" onPress={onRefresh} style={styles.refreshButton}>
-          Refresh
-        </Button>
-      </View>
-    )
+    <View style={styles.row}>
+      <Text style={styles.cell}>Invoice No</Text>
+      <Text style={styles.cell}>Customer Name</Text>
+      <Text style={styles.cell}>Amount</Text>
+      <Text style={styles.cell}>Status</Text>
+    </View>
   }
   onEndReached={handleScroll}
   onEndReachedThreshold={0.1}
@@ -289,7 +270,7 @@ const InvoiceScreen = () => {
   }
 />
 
-
+       
       )}
 
       <Snackbar
@@ -375,20 +356,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 50,
     backgroundColor: '#007BFF',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#888',
-    marginBottom: 10,
-  },
-  refreshButton: {
-    marginTop: 10,
   },
 });
 

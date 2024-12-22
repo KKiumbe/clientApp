@@ -26,24 +26,25 @@ const HomeScreen = () => {
   const [downloadingReport, setDownloadingReport] = useState(false); // Track download state
 
 
-  const { currentUser } = useAuthStore();
+  const currentUser = useAuthStore(state => state.currentUser);
 
+   
   useEffect(() => {
-    const checkToken = async () => {
-      const token = await AsyncStorage.getItem('user');
-      if (!token) {
-        router.push('login');
-      }
-    };
-    checkToken();
+    if (!currentUser) {
+      router.push('login');
+    } else {
+      fetchDashboardStats();
+      fetchSmsBalance();
+    }
   }, []);
 
   const fetchDashboardStats = async () => {
     try {
-      const token = await AsyncStorage.getItem('user');
-      const response = await axios.get(`${BASEURL}/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    
+  
+      const response = await axios.get(`${BASEURL}/stats`, 
+      
+      );
       setDashboardStats(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
@@ -62,20 +63,15 @@ const HomeScreen = () => {
 
    // Start downloading for the specific report type
 
-      const token = await AsyncStorage.getItem('user');
-      const response = await axios.get(`${BASEURL}/get-sms-balance`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+     
+      const response = await axios.get(`${BASEURL}/get-sms-balance`);
       setSmsBalance(response.data.credit);
     } catch (error) {
       Alert.alert('Error', 'Could not fetch SMS balance.');
     }
   };
 
-  useEffect(() => {
-    fetchDashboardStats();
-    fetchSmsBalance();
-  }, []);
+
 
   const sendSms = async (endpoint) => {
     setSendingModalVisible(true);
@@ -159,9 +155,7 @@ const HomeScreen = () => {
   
       // Fetch the report from the API
       const response = await axios.get(fullUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+     
         responseType: 'arraybuffer', // Ensure we get binary data
       });
   

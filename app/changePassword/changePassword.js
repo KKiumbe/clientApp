@@ -41,7 +41,7 @@ const ChangePassword = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${BASEURL}/reset-password`, {
+      const response = await fetch(`${BASEURL}/password-reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

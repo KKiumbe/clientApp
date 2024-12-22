@@ -6,8 +6,6 @@ import { useRouter } from 'expo-router';
 
 const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
-
-
 const ProfilePage = () => {
   const { currentUser, updateCurrentUser, loadUser, isLoading } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -17,53 +15,37 @@ const ProfilePage = () => {
     loadUser(); // Load user data when the component mounts
   }, []);
 
-  const phoneNumber = currentUser?.phoneNumber;
-
- 
-
-
   const handleChangePassword = async () => {
-
-    if (!phoneNumber) {
-      Alert.alert('Error', 'Phone number is missing. Please check your profile.');
+    if (!currentUser?.phoneNumber) {
+      Alert.alert('Error', 'Phone number is not available.');
       return;
     }
-  
-    console.log(BASEURL);
+
     setLoading(true);
     try {
-      console.log('Requesting OTP for:', phoneNumber); // Debug log
-      console.log('BASEURL:', BASEURL); // Debug log
-  
       const response = await fetch(`${BASEURL}/request-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ phoneNumber }),
+        body: JSON.stringify({ phoneNumber: currentUser.phoneNumber }),
       });
-  
-      //console.log('Response Status:', response.status);
-  
+
+      const result = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
-        console.log('OTP request successful:', data);
-        router.push(`/changePassword/verifyOTP`);
+        Alert.alert('Success', 'OTP has been sent to your phone.');
+        router.push('/changePassword/verifyOTP');
       } else {
-        const text = await response.text();
-        console.error('Error Response:', text);
-        Alert.alert('Request Failed', `Failed to request OTP. ${text}`);
+        Alert.alert('Error', result.message || 'Failed to request OTP.');
       }
     } catch (error) {
-      console.error('Network Error:', error);
-      Alert.alert('Error', 'An error occurred while requesting OTP. Check your network and API configuration.');
+      console.error('Error requesting OTP:', error);
+      Alert.alert('Error', 'An error occurred while requesting OTP.');
     } finally {
       setLoading(false);
     }
   };
-  
-
-
 
   if (isLoading) {
     return (
@@ -85,12 +67,10 @@ const ProfilePage = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Profile</Text>
-      <Text>Name: {`${currentUser.firstName} ${currentUser.lastName}`}</Text>
+      <Text>First Name: {currentUser.firstName}</Text>
+      <Text>Last Name: {currentUser.lastName}</Text>
       <Text>Email: {currentUser.email}</Text>
       <Text>Phone: {currentUser.phoneNumber}</Text>
-      <Text>County: {currentUser.county}</Text>
-      <Text>Town: {currentUser.town}</Text>
-      <Text>Gender: {currentUser.gender}</Text>
 
       <Button
         mode="contained"

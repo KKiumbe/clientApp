@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TextInput, ScrollView, RefreshControl } from 'react-native';
 import { DataTable, Appbar, Snackbar, ActivityIndicator, Text } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { router, useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import useAuthStore from '../../store/authStore';
 
 const ReceiptsScreen = () => {
     const [receipts, setReceipts] = useState([]);
@@ -14,69 +14,58 @@ const ReceiptsScreen = () => {
     const [loading, setLoading] = useState(true);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [hasPermission, setHasPermission] = useState(true);
 
     const BASEURL = process.env.EXPO_PUBLIC_API_URL;
-    const navigation = useNavigation();
+    const router = useRouter();
+    const currentUser = useAuthStore((state) => state.currentUser);
+
+    useEffect(() => {
+        if (!currentUser) {
+            router.push('/login');
+        } else {
+            fetchReceipts();
+        }
+    }, [currentUser]);
 
     const fetchReceipts = async () => {
         setLoading(true);
-        try {
-            const token = await AsyncStorage.getItem('user');
-            if (!token) {
-                router.push('login');
-                return;
-            }
+        setSnackbarMessage('');
+        setSnackbarOpen(false);
 
-            const accessResponse = await axios.get(`${BASEURL}/check-permissions`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                params: { module: 'receipt', action: 'read' },
+        try {
+            // No Authorization header needed; cookies handle the authentication.
+            const response = await axios.get(`${BASEURL}/receipts`, {
+                withCredentials: true, // Ensures cookies are sent with the request
             });
 
-            if (accessResponse.status === 200) {
-                const response = await axios.get(`${BASEURL}/receipts`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
-                });
-
-                if (Array.isArray(response.data)) {
-                    setReceipts(response.data);
-                    setFilteredReceipts(response.data);
-                } else {
-                    setReceipts([]);
-                    setFilteredReceipts([]);
-                }
+            if (Array.isArray(response.data)) {
+                setReceipts(response.data);
+                setFilteredReceipts(response.data);
             } else {
-                throw new Error('Access Denied');
+                setReceipts([]);
+                setFilteredReceipts([]);
             }
         } catch (error) {
+            console.error('Error fetching receipts:', error);
             if (error.response?.status === 403) {
-                setHasPermission(false);
                 setSnackbarMessage('Access denied: You do not have permission to view receipts.');
             } else {
                 setSnackbarMessage('An error occurred while fetching receipts.');
             }
-            setSnackbarOpen(true);
             setReceipts([]);
             setFilteredReceipts([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
+            setSnackbarOpen(true);
         }
     };
 
-    useEffect(() => {
-        fetchReceipts();
-    }, []);
-
     const handleSearch = (query) => {
         setSearchQuery(query);
-        const filteredData = receipts.filter(receipt => {
-            const receiptNumberMatch = receipt.receiptNumber.toLowerCase().includes(query.toLowerCase());
-            const paidByMatch = receipt.paidBy.toLowerCase().includes(query.toLowerCase());
+        const filteredData = receipts.filter((receipt) => {
+            const receiptNumberMatch = receipt.receiptNumber?.toLowerCase().includes(query.toLowerCase());
+            const paidByMatch = receipt.paidBy?.toLowerCase().includes(query.toLowerCase());
             const phoneNumberMatch = receipt.customer?.phoneNumber?.toLowerCase().includes(query.toLowerCase());
             return receiptNumberMatch || paidByMatch || phoneNumberMatch;
         });
@@ -95,14 +84,6 @@ const ReceiptsScreen = () => {
         setRefreshing(true);
         fetchReceipts();
     };
-
-    if (!hasPermission) {
-        return (
-            <View style={styles.accessDeniedContainer}>
-                <Text style={styles.accessDeniedText}>Kindly ask the admin to give you rights.</Text>
-            </View>
-        );
-    }
 
     return (
         <View style={styles.container}>
@@ -124,9 +105,7 @@ const ReceiptsScreen = () => {
                 <ActivityIndicator size="large" color="blue" style={styles.loader} />
             ) : (
                 <ScrollView
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    }
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 >
                     <DataTable>
                         <DataTable.Header>
@@ -137,7 +116,7 @@ const ReceiptsScreen = () => {
                             <DataTable.Title>Paid By</DataTable.Title>
                         </DataTable.Header>
 
-                        {Array.isArray(filteredReceipts) && filteredReceipts.map(receipt => (
+                        {filteredReceipts.map((receipt) => (
                             <DataTable.Row
                                 key={receipt.id}
                                 onPress={() => handleRowClick(receipt)}
@@ -202,17 +181,6 @@ const styles = StyleSheet.create({
     },
     loader: {
         marginTop: 20,
-    },
-    accessDeniedContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    accessDeniedText: {
-        fontSize: 18,
-        color: 'red',
-        textAlign: 'center',
     },
 });
 

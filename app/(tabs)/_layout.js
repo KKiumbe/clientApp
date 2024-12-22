@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Drawer, Provider as PaperProvider } from 'react-native-paper';
+import { Provider as PaperProvider } from 'react-native-paper';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import useAuthStore from '../../store/authStore';
 import { useRouter } from 'expo-router';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Components for each page
 import HomePage from './index';
@@ -18,6 +19,9 @@ import ReceiptingPage from './receipting';
 import ProfilePage from '../profile';
 import SMSoutbox from '../smsDelivery/delivery';
 import UserManagement from './users';
+import Tasks from './tasks';
+import AssignTasks from './assignTasks';
+import ReportsPage from './reports';
 
 // Define role-based access to menu items
 const MENU_ITEMS = [
@@ -33,7 +37,7 @@ const MENU_ITEMS = [
     component: CollectionPage,
     label: 'Collection',
     icon: 'trash-outline',
-    roles: ['collector', 'admin','customer_manager'],
+    roles: ['collector', 'admin', 'customer_manager'],
   },
   {
     name: 'Customers',
@@ -47,21 +51,21 @@ const MENU_ITEMS = [
     component: InvoicesPage,
     label: 'Invoices',
     icon: 'document-text-outline',
-    roles: ['admin', 'accountant','customer_manager'],
+    roles: ['admin', 'accountant', 'customer_manager'],
   },
   {
     name: 'Payments',
     component: PaymentsPage,
     label: 'Payments',
     icon: 'card-outline',
-    roles: ['admin', 'accountant','customer_manager'],
+    roles: ['admin', 'accountant', 'customer_manager'],
   },
   {
     name: 'Receipting',
     component: ReceiptingPage,
     label: 'Receipts',
     icon: 'receipt-outline',
-    roles: ['admin', 'accountant','customer_manager'],
+    roles: ['admin', 'accountant', 'customer_manager'],
   },
   {
     name: 'Messages',
@@ -71,18 +75,39 @@ const MENU_ITEMS = [
     roles: ['admin', 'customer_manager'],
   },
   {
-    name: 'Profile',
-    component: ProfilePage,
-    label: 'Profile',
-    icon: 'person-outline',
-    roles: [], // Accessible by all roles
-  },
-  {
     name: 'Management',
     component: UserManagement,
     label: 'Users',
     icon: 'person-outline',
     roles: ['admin'],
+  },
+  {
+    name: 'Reports',
+    component: ReportsPage,
+    label: 'Reports',
+    icon: 'document-attach',
+    roles: ['admin'], // Accessible by all roles
+  },
+  {
+    name: 'Tasks',
+    component: Tasks,
+    label: 'Tasks',
+    icon: 'checkmark-done-outline',
+    roles: [], // Accessible by all roles
+  },
+  {
+    name: 'Assign Tasks',
+    component: AssignTasks,
+    label: 'Assign Trash Bag Tasks',
+    icon: 'person-add-outline',
+    roles: ['admin'], // Accessible by all roles
+  },
+  {
+    name: 'Profile',
+    component: ProfilePage,
+    label: 'Profile',
+    icon: 'person-outline',
+    roles: [], // Accessible by all roles
   },
 ];
 
@@ -125,36 +150,38 @@ export default function DrawerLayout() {
   );
 
   return (
-    <PaperProvider>
-      <DrawerNavigator.Navigator
-        initialRouteName="Home"
-        screenOptions={({ navigation }) => ({
-          drawerActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-          headerShown: true,
-          headerLeft: () => (
-            <Ionicons
-              name="menu"
-              size={30}
-              color={Colors[colorScheme ?? 'light'].text}
-              style={{ marginLeft: 10 }}
-              onPress={() => navigation.toggleDrawer()}
+    
+      <PaperProvider>
+        <DrawerNavigator.Navigator
+          initialRouteName="Home"
+          screenOptions={({ navigation }) => ({
+            drawerActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+            headerShown: true,
+            headerLeft: () => (
+              <Ionicons
+                name="menu"
+                size={30}
+                color={Colors[colorScheme ?? 'light'].text}
+                style={{ marginLeft: 10 }}
+                onPress={() => navigation.toggleDrawer()}
+              />
+            ),
+          })}
+        >
+          {accessibleMenuItems.map((item) => (
+            <DrawerNavigator.Screen
+              key={item.name}
+              name={item.name}
+              component={item.component}
+              options={{
+                drawerLabel: item.label,
+                drawerIcon: ({ color, size }) => <Ionicons name={item.icon} color={color} size={size} />,
+              }}
             />
-          ),
-        })}
-      >
-        {accessibleMenuItems.map((item) => (
-          <DrawerNavigator.Screen
-            key={item.name}
-            name={item.name}
-            component={item.component}
-            options={{
-              drawerLabel: item.label,
-              drawerIcon: ({ color, size }) => <Ionicons name={item.icon} color={color} size={size} />,
-            }}
-          />
-        ))}
-      </DrawerNavigator.Navigator>
-    </PaperProvider>
+          ))}
+        </DrawerNavigator.Navigator>
+      </PaperProvider>
+    
   );
 }
 

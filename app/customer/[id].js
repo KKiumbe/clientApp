@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { ScrollView } from 'react-native-gesture-handler';
 
 const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -86,64 +87,104 @@ const CustomerDetailsPage = () => {
     }
   };
 
-  const renderCustomerDetails = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Customer Details</Text>
-      <Text>First Name: {customerData?.firstName}</Text>
-      <Text>Last Name: {customerData?.lastName}</Text>
-      <Text>Email: {customerData?.email}</Text>
-      <Text>Phone: {customerData?.phoneNumber}</Text>
-      <Text>County: {customerData?.county}</Text>
-      <Text>Town: {customerData?.town}</Text>
-      <Text>Category: {customerData?.category}</Text>
-      <Text>Status: {customerData?.status}</Text>
-      <Text>Monthly Charge: ${customerData?.monthlyCharge}</Text>
-      <Text>Collection Day: {customerData?.garbageCollectionDay}</Text>
-      <Text>Collected: {customerData?.collected ? 'Yes' : 'No'}</Text>
-      <Text>Closing Balance: ${customerData?.closingBalance}</Text>
+  
+  const renderCard = (title, data, renderItem, keyExtractor) => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <FlatList
+        data={data}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        style={styles.flatList}
+        ListEmptyComponent={<Text style={styles.message}>No records found.</Text>}
+      />
     </View>
   );
 
-  const renderInvoiceItem = ({ item }) => {
-    // Check if the invoice has any associated receipts
-    const hasReceipts = item?.receiptInvoices?.length > 0;
-
-    return (
+  {renderCard(
+    'Customer Details',
+    [customerData],
+    () => (
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Invoice #: {item?.invoiceNumber}</Text>
-        <Text>Amount: ${item?.invoiceAmount}</Text>
-        <Text>Status: {item?.status}</Text>
-        <Text>Created At: {new Date(item?.createdAt).toLocaleDateString()}</Text>
-        <Text>Closing Balance: ${item?.closingBalance}</Text>
-
-        {/* Show "View Receipt" button if the invoice has receipts and is paid */}
-        {hasReceipts && (item?.status === 'PAID' || item?.status === 'PPAID') && (
-          <Button
-            title="View Receipt"
-            onPress={() => {
-              setSelectedInvoice(item);
-              setReceiptVisible(true);
-            }}
-          />
-        )}
+        <Text>First Name: {customerData.firstName}</Text>
+        <Text>Last Name: {customerData.lastName}</Text>
+        <Text>Email: {customerData.email}</Text>
+        <Text>Phone: {customerData.phoneNumber}</Text>
+        <Text>County: {customerData.county}</Text>
+        <Text>Town: {customerData.town}</Text>
+        <Text>Category: {customerData.category}</Text>
+        <Text>Status: {customerData.status}</Text>
+        <Text>Monthly Charge: ${customerData.monthlyCharge}</Text>
+        <Text>Collection Day: {customerData.garbageCollectionDay}</Text>
+        <Text>Closing Balance: ${customerData.closingBalance}</Text>
       </View>
-    );
-  };
+    ),
+    () => 'customerDetails'
+  )}
 
-  const renderInvoicesSection = () => (
-    <>
-      <Text style={styles.sectionTitle}>Invoices</Text>
-      <FlatList
-        data={customerData.invoices}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderInvoiceItem}
-        style={styles.flatList}
-      />
-    </>
-  );
+  {renderCard(
+    'Invoices',
+    customerData.invoices,
+    ({ item }) => (
+      <View style={styles.card}>
+        <Text>Invoice #: {item.invoiceNumber}</Text>
+        <Text>Amount: ${item.invoiceAmount}</Text>
+        <Text>Status: {item.status}</Text>
+        <Text>Created At: {new Date(item.createdAt).toLocaleDateString()}</Text>
+        <Text>Closing Balance: ${item.closingBalance}</Text>
+      </View>
+    ),
+    (item) => item.id
+  )}
+
+  {renderCard(
+    'Receipts',
+    customerData.receipts,
+    ({ item }) => (
+      <View style={styles.card}>
+        <Text>Receipt #: {item.receiptNumber}</Text>
+        <Text>Amount: ${item.amount}</Text>
+        <Text>Payment Mode: {item.modeOfPayment}</Text>
+        <Text>Paid By: {item.paidBy}</Text>
+        <Text>Transaction ID: {item.payment?.transactionId}</Text>
+      </View>
+    ),
+    (item) => item.id
+  )}
+
+  {renderCard(
+    'Trash Bag Issuance History',
+    customerData.trashBagIssuanceHistory,
+    ({ item }) => (
+      <View style={styles.card}>
+        <Text>Task Type: {item.task.type}</Text>
+        <Text>Status: {item.task.status}</Text>
+        <Text>Bags Issued: {item.bagsIssued ? 'Yes' : 'No'}</Text>
+        <Text>Issued Date: {new Date(item.issuedDate).toLocaleDateString()}</Text>
+      </View>
+    ),
+    (item) => item.id
+  )}
+
+  {renderCard(
+    'Garbage Collection History',
+    customerData.garbageCollectionHistory,
+    ({ item }) => (
+      <View style={styles.card}>
+        <Text>Collection Date: {new Date(item.collectionDate).toLocaleDateString()}</Text>
+        <Text>Collected: {item.collected ? 'Yes' : 'No'}</Text>
+      </View>
+    ),
+    (item) => item.id
+  )}
+
+
+
+
+
 
   return (
-    <View style={styles.container}>
+  <ScrollView style={styles.container}>
       <TouchableOpacity style={styles.sendSMSButton} onPress={() => setModalVisible(true)}>
         <MaterialIcons name="message" size={30} color="white" />
       </TouchableOpacity>
@@ -152,12 +193,88 @@ const CustomerDetailsPage = () => {
         <Text style={styles.sendBillButtonText}>Send Current Bill</Text>
       </TouchableOpacity>
 
-      <FlatList
-        data={[{ type: 'customerDetails' }, { type: 'invoices' }]}
-        renderItem={({ item }) => (item.type === 'customerDetails' ? renderCustomerDetails() : renderInvoicesSection())}
-        keyExtractor={(item) => item.type}
-        contentContainerStyle={styles.listContainer}
-      />
+      {renderCard(
+        'Customer Details',
+        [customerData],
+        () => (
+          <View style={styles.card}>
+            <Text>First Name: {customerData.firstName}</Text>
+            <Text>Last Name: {customerData.lastName}</Text>
+            <Text>Email: {customerData.email}</Text>
+            <Text>Phone: {customerData.phoneNumber}</Text>
+            <Text>County: {customerData.county}</Text>
+            <Text>Town: {customerData.town}</Text>
+            <Text>Category: {customerData.category}</Text>
+            <Text>Status: {customerData.status}</Text>
+            <Text>Monthly Charge: ${customerData.monthlyCharge}</Text>
+            <Text>Collection Day: {customerData.garbageCollectionDay}</Text>
+            <Text>Closing Balance: ${customerData.closingBalance}</Text>
+          </View>
+        ),
+        () => 'customerDetails'
+      )}
+
+      {renderCard(
+        'Invoices',
+        customerData.invoices,
+        ({ item }) => (
+          <View style={styles.card}>
+            <Text>Invoice #: {item.invoiceNumber}</Text>
+            <Text>Amount: ${item.invoiceAmount}</Text>
+            <Text>Status: {item.status}</Text>
+            <Text>Created At: {new Date(item.createdAt).toLocaleDateString()}</Text>
+            <Text>Closing Balance: ${item.closingBalance}</Text>
+          </View>
+        ),
+        (item) => item.id
+      )}
+
+      {renderCard(
+        'Receipts',
+        customerData.receipts,
+        ({ item }) => (
+          <View style={styles.card}>
+            <Text>Receipt #: {item.receiptNumber}</Text>
+            <Text>Amount: ${item.amount}</Text>
+            <Text>Payment Mode: {item.modeOfPayment}</Text>
+            <Text>Paid By: {item.paidBy}</Text>
+            <Text>Transaction ID: {item.payment?.transactionId}</Text>
+          </View>
+        ),
+        (item) => item.id
+      )}
+
+      {renderCard(
+        'Trash Bag Issuance History',
+        customerData.trashBagIssuanceHistory,
+        ({ item }) => (
+          <View style={styles.card}>
+            <Text>Task Type: {item.task.type}</Text>
+            <Text>Status: {item.task.status}</Text>
+            <Text>Bags Issued: {item.bagsIssued ? 'Yes' : 'No'}</Text>
+            <Text>Issued Date: {new Date(item.issuedDate).toLocaleDateString()}</Text>
+          </View>
+        ),
+        (item) => item.id
+      )}
+
+      {renderCard(
+        'Garbage Collection History',
+        customerData.garbageCollectionHistory,
+        ({ item }) => (
+          <View style={styles.card}>
+            <Text>Collection Date: {new Date(item.collectionDate).toLocaleDateString()}</Text>
+            <Text>Collected: {item.collected ? 'Yes' : 'No'}</Text>
+          </View>
+        ),
+        (item) => item.id
+      )}
+
+  
+
+
+
+
 
       {/* SMS Modal */}
       <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
@@ -205,7 +322,7 @@ const CustomerDetailsPage = () => {
           <Text style={styles.snackbarText}>{snackbarMessage}</Text>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 };
 
