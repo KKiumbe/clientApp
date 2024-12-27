@@ -15,9 +15,12 @@ const ReceiptsScreen = () => {
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarOpen, setSnackbarOpen] = useState(false);
 
-    const BASEURL = process.env.EXPO_PUBLIC_API_URL;
+
     const router = useRouter();
     const currentUser = useAuthStore((state) => state.currentUser);
+    const BASEURL =process.env.EXPO_PUBLIC_API_URL
+
+    console.log(`base url ${BASEURL}`);
 
     useEffect(() => {
         if (!currentUser) {
@@ -27,31 +30,45 @@ const ReceiptsScreen = () => {
         }
     }, [currentUser]);
 
+
+
     const fetchReceipts = async () => {
         setLoading(true);
         setSnackbarMessage('');
         setSnackbarOpen(false);
-
+    
         try {
-            // No Authorization header needed; cookies handle the authentication.
-            const response = await axios.get(`${BASEURL}/receipts`, {
-                withCredentials: true, // Ensures cookies are sent with the request
-            });
-
+            const url = `${BASEURL}/receipts`;
+            console.log('Fetching from:', url);
+    
+            const response = await axios.get(url);
+            console.log('Receipts Response:', response.data);
+    
             if (Array.isArray(response.data)) {
+                // If the response is an array, set it as receipts
                 setReceipts(response.data);
                 setFilteredReceipts(response.data);
+            } else if (response.data?.message === 'No receipts found.') {
+                // If the response contains the "message", handle it
+                setSnackbarMessage(response.data.message);
+                setReceipts([]);
+                setFilteredReceipts([]);
             } else {
+                // Handle unexpected structures
+                console.warn('Unexpected response structure:', response.data);
+                setSnackbarMessage('Unexpected response from the server.');
                 setReceipts([]);
                 setFilteredReceipts([]);
             }
         } catch (error) {
             console.error('Error fetching receipts:', error);
-            if (error.response?.status === 403) {
-                setSnackbarMessage('Access denied: You do not have permission to view receipts.');
-            } else {
-                setSnackbarMessage('An error occurred while fetching receipts.');
-            }
+    
+            const errorMessage =
+                error.response?.status === 404
+                    ? 'Receipts endpoint not found. Please check the server.'
+                    : 'An error occurred while fetching receipts.';
+    
+            setSnackbarMessage(errorMessage);
             setReceipts([]);
             setFilteredReceipts([]);
         } finally {
@@ -60,6 +77,10 @@ const ReceiptsScreen = () => {
             setSnackbarOpen(true);
         }
     };
+    
+    
+
+
 
     const handleSearch = (query) => {
         setSearchQuery(query);

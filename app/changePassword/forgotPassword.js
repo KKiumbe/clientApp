@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text, Title, Subheading, ActivityIndicator } from 'react-native-paper';
 import { router, useNavigation } from 'expo-router';
 
-const BASEURL = "http://212.47.74.158:5000/api";
+const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
 const forgotPassword = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -25,7 +25,7 @@ const forgotPassword = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${BASEURL}/forgot-password`, {
+      const response = await fetch(`${BASEURL}/request-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,7 +35,7 @@ const forgotPassword = () => {
 
       if (response.ok) {
         Alert.alert('Success', 'OTP sent to your phone.');
-        router.push(`/verifyOTP?phoneNumber=${phoneNumber}`);
+router.push({ pathname: '/verifyOTP', params: { phoneNumber } });
       } else {
         const result = await response.json();
         Alert.alert('Error', result.message || 'Failed to send OTP.');

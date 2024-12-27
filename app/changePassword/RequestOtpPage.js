@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, TextInput, Alert } from 'react-native';
 import { Button } from 'react-native-paper';
-
 import { router } from 'expo-router';
 import useAuthStore from '../../store/authStore';
 
 const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
 const RequestOtpPage = () => {
-  const { currentUser, isLoading } = useAuthStore();
+  const currentUser = useAuthStore((state) => state.currentUser); // Get the logged-in user from the store
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
 
+  console.log(`current user ${currentUser}`);
+
   useEffect(() => {
-    if (currentUser) {
-      setPhoneNumber(currentUser.phoneNumber); // Pre-populate phone number from the logged-in user
+    if (currentUser?.phoneNumber) {
+      setPhoneNumber(currentUser.phoneNumber); // Pre-fill phone number if the user is logged in
     }
   }, [currentUser]);
 
@@ -31,15 +32,17 @@ const RequestOtpPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ phoneNumber: phoneNumber }),
+        body: JSON.stringify({ phoneNumber }),
       });
 
       const result = await response.json();
 
       if (response.ok) {
         Alert.alert('Success', 'OTP has been sent to your phone.');
-        // Navigate to the Change Password screen
-        router.push('/change-password');
+        // Navigate to the Verify OTP screen with the phone number
+
+        router.replace('/VerifyOTP');
+
       } else {
         Alert.alert('Error', result.message || 'Failed to request OTP.');
       }
@@ -50,14 +53,6 @@ const RequestOtpPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading user data...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Request OTP</Text>
@@ -67,7 +62,7 @@ const RequestOtpPage = () => {
         value={phoneNumber}
         onChangeText={setPhoneNumber}
         keyboardType="phone-pad"
-        editable={false} // Make it non-editable if you don't want the user to change it
+        editable={!currentUser} // Make the input editable only if the user is not logged in
       />
       <Button
         mode="contained"

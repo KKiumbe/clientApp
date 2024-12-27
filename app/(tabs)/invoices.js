@@ -3,7 +3,7 @@ import { View, StyleSheet, ActivityIndicator, RefreshControl, FlatList } from 'r
 import { TextInput, Button, Text, Snackbar, FAB, Portal, Menu, IconButton, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { router } from 'expo-router';
 import useAuthStore from '../../store/authStore';
 
@@ -42,20 +42,16 @@ const InvoiceScreen = () => {
   };
 
   const fetchInvoices = async (reset = false) => {
-    if (reset) {
-      setOffset(0);
-      setInvoices([]);
-    }
-
-    setLoading(true);
     try {
-      
-      
-
+      if (reset) {
+        setOffset(0);
+        setInvoices([]);
+      }
+  
+      setLoading(true);
       const response = await axios.get(`${BASEURL}/invoices/all`, {
         headers: {
           'Content-Type': 'application/json',
-        
         },
         params: {
           status: statusFilter,
@@ -63,23 +59,24 @@ const InvoiceScreen = () => {
           limit: limit,
         },
       });
-
-      setInvoices((prevInvoices) => [...prevInvoices, ...response.data]);
-      setOffset((prevOffset) => prevOffset + limit);
+  
+      const data = Array.isArray(response.data) ? response.data : [];
+      if (data.length > 0) {
+        setInvoices((prev) => [...prev, ...data]);
+        setOffset((prev) => prev + limit);
+      } else if (reset) {
+        setInvoices([]); // Clear only on reset when no data is found
+      }
     } catch (error) {
       console.error('Error fetching invoices:', error);
-      if (error.response && error.response.status === 401) {
-        setSnackbarMessage('You are not authorized. Please log in.');
-        setSnackbarOpen(true);
-        router.push('login');
-      } else {
-        setSnackbarMessage('Failed to fetch invoices. Please try again.');
-        setSnackbarOpen(true);
-      }
+      setSnackbarMessage('Failed to fetch invoices. Please try again.');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
   };
+  
+  
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -109,13 +106,13 @@ const InvoiceScreen = () => {
   };
 
   const handleScroll = async () => {
-    if (!loadingMore && !loading) {
+    if (!loadingMore && !loading && invoices.length > 0) {
       setLoadingMore(true);
       await fetchInvoices();
       setLoadingMore(false);
     }
   };
-
+  
   const handleStatusFilter = (status) => {
     setStatusFilter(status);
     fetchInvoices(true);
@@ -139,28 +136,34 @@ const InvoiceScreen = () => {
     }
   };
 
+  
+
   useFocusEffect(
     useCallback(() => {
-      fetchInvoices(true);
+      if (loading) {
+        fetchInvoices(true);
+      }
       setFabVisible(true);
+  
       return () => {
         setFabVisible(false);
       };
-    }, [])
+    }, [loading]) // Add dependencies to avoid re-calling unnecessarily
   );
+  
 
-  const renderItem = ({ item }) => {
+ 
+
+    const renderItem = ({ item }) => {
+      if (!item) return null;
+    
     return (
       <View style={styles.row} onTouchEnd={() => router.push(`invoices/${item.id}`)}>
-        {/* Invoice Number */}
-        <Text style={styles.cell}>{item.invoiceNumber.slice(0,4)}</Text>
-        {/* Customer Name */}
-        <Text style={styles.cell}>{`${item.customer.firstName}`}</Text>
-        {/* Invoice Amount */}
-        <Text style={styles.cell}>{item.invoiceAmount}</Text>
-        {/* Status */}
-        <Text style={[styles.cell, { color: getStatusColor(item.status) }]}>{item.status}</Text>
-      </View>
+      <Text style={styles.cell}>{item.invoiceNumber ? item.invoiceNumber.slice(0, 4) : 'N/A'}</Text>
+      <Text style={styles.cell}>{item.customer?.firstName || 'N/A'}</Text>
+      <Text style={styles.cell}>{item.invoiceAmount || 'N/A'}</Text>
+      <Text style={[styles.cell, { color: getStatusColor(item.status) }]}>{item.status || 'N/A'}</Text>
+    </View>
     );
   };
 
@@ -246,22 +249,29 @@ const InvoiceScreen = () => {
       {loading ? (
         <ActivityIndicator size="large" color="#007BFF" style={styles.loader} />
       ) : (
+       
+
         <FlatList
   data={invoices.filter(invoice => !statusFilter || invoice.status === statusFilter)}
   renderItem={renderItem}
-  keyExtractor={(item, index) =>
-    item.id ? item.id : item.invoiceNumber ? `${item.invoiceNumber}-${index}` : `${index}`
-  }
-  refreshControl={
-    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-  }
+  keyExtractor={(item) => item.id.toString()} // Simplify the keyExtractor
+  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
   ListHeaderComponent={
-    <View style={styles.row}>
-      <Text style={styles.cell}>Invoice No</Text>
-      <Text style={styles.cell}>Customer Name</Text>
-      <Text style={styles.cell}>Amount</Text>
-      <Text style={styles.cell}>Status</Text>
-    </View>
+    invoices.length > 0 && (
+      <View style={styles.row}>
+        <Text style={styles.cell}>Invoice No</Text>
+        <Text style={styles.cell}>Customer Name</Text>
+        <Text style={styles.cell}>Amount</Text>
+        <Text style={styles.cell}>Status</Text>
+      </View>
+    )
+  }
+  ListEmptyComponent={
+    !loading && (
+      <View style={styles.row}>
+        <Text>No invoices found.</Text>
+      </View>
+    )
   }
   onEndReached={handleScroll}
   onEndReachedThreshold={0.1}
@@ -269,6 +279,8 @@ const InvoiceScreen = () => {
     loadingMore ? <ActivityIndicator size="small" color="#007BFF" style={styles.loader} /> : null
   }
 />
+
+
 
        
       )}

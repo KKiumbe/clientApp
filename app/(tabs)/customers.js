@@ -46,7 +46,9 @@ const Customers = React.memo(() => {
     if (!currentUser) {
       router.push('login');
     } else {
+      setLoading(true);
       fetchCustomers();
+      setLoading(false);
     }
   }, [currentUser]);
 
@@ -276,6 +278,14 @@ const Customers = React.memo(() => {
     )}
 
 
+{loading ? (
+      // Show a loading spinner while data is being fetched
+      <ActivityIndicator size="large" color="#6200ee" style={styles.spinner} />
+    )  : (
+
+
+
+
       <DataTable>
         <DataTable.Header>
           <DataTable.Title>First Name</DataTable.Title>
@@ -294,6 +304,8 @@ const Customers = React.memo(() => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       </DataTable>
+
+)}
 
       <FAB
         style={styles.fab}
@@ -611,7 +623,12 @@ const styles = StyleSheet.create({
   ,
   rotatedIcon: {
     transform: [{ rotate: '90 deg' }],
-  }
+  },
+
+  spinner: {
+    marginTop: 50, // Center spinner vertically
+  },
+  
 
 });
 
