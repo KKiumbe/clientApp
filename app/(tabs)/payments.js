@@ -185,7 +185,10 @@ const PaymentScreen = () => {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={styles.container}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        >
+       
             <Text style={styles.title}>Payments</Text>
             <Searchbar
                 placeholder="Search payments by Mpesa code, name, or phone number"
@@ -359,6 +362,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 16,
+        paddingBottom: 100,
     },
     title: {
         fontSize: 24,

@@ -131,6 +131,10 @@ const CustomerCollectionScreen = () => {
     }
   };
 
+  const handleCall = () => {
+    Linking.openURL(`tel:${selectedCustomer.phoneNumber}`);
+  };
+
   if (!hasPermission) {
     return (
       <View style={styles.accessDeniedContainer}>
@@ -203,7 +207,73 @@ const CustomerCollectionScreen = () => {
             onRefresh={onRefresh}
             refreshing={refreshing}
           />
+
+
+
+{selectedCustomer && modalVisible && (
+            <Modal
+              visible={modalVisible}
+              animationType="slide"
+              onRequestClose={() => setModalVisible(false)}
+            >
+              <View style={styles.modalContainer}>
+                <Text style={styles.modalTitle}>Contact {selectedCustomer.firstName}</Text>
+                <TextInput
+                  style={styles.smsInput}
+                  placeholder="Enter your message here..."
+                  value={smsMessage}
+                  onChangeText={setSmsMessage}
+                />
+                <View style={styles.buttonContainer}>
+                  <Button 
+                    mode="contained" 
+                    onPress={() => handleSendSMS(selectedCustomer)} 
+                    style={styles.Button}
+                  >
+                    Send SMS
+                  </Button>
+                  <Button mode="contained" onPress={handleCall} style={styles.Button}>
+                    Call
+                  </Button>
+                </View>
+                <Button mode="outlined" onPress={() => setModalVisible(false)}>
+                  Close
+                </Button>
+              </View>
+            </Modal>
+
+          )}
+
+<Modal
+            visible={bulkSmsModalVisible}
+            animationType="slide"
+            onRequestClose={() => setBulkSmsModalVisible(false)}
+          >
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Send Bulk SMS for {selectedDay}</Text>
+              <TextInput
+                style={styles.smsInput}
+                placeholder="Enter your message for all..."
+                value={smsMessage}
+                onChangeText={setSmsMessage}
+              />
+              <View style={styles.buttonContainer}>
+                <Button mode="contained" onPress={handleSendBulkSMS}>
+                  Send Bulk SMS
+                </Button>
+                <Button mode="outlined" onPress={() => setBulkSmsModalVisible(false)}>
+                  Close
+                </Button>
+              </View>
+            </View>
+          </Modal>
+
         </>
+
+
+
+
+
       )}
       <Snackbar
         visible={snackbarVisible}
